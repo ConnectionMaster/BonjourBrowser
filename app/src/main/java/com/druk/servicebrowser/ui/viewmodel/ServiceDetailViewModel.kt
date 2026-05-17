@@ -104,7 +104,7 @@ class ServiceDetailViewModel(application: Application) : AndroidViewModel(applic
     private fun enrichAddresses(info: BonjourServiceInfo) {
         val hostname = info.hostname ?: return
         viewModelScope.launch {
-            val allAddresses = MdnsAddressResolver.resolveAddresses(hostname)
+            val allAddresses = MdnsAddressResolver.resolveAddresses(getApplication(), hostname)
             if (allAddresses.isNotEmpty() && allAddresses.size > info.inetAddresses.size) {
                 val updated = info.copy(inetAddresses = allAddresses)
                 _serviceInfo.value = updated

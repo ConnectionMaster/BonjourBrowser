@@ -1,6 +1,7 @@
 package com.druk.servicebrowser
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -52,7 +53,8 @@ class ServiceTypeResolverTest {
 
     @Test
     fun startAndStop_runsWithoutCrash() {
-        val resolver = ServiceTypeResolver()
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val resolver = ServiceTypeResolver(context)
         val found = CopyOnWriteArraySet<String>()
 
         runBlocking {

@@ -1,5 +1,6 @@
 package com.druk.servicebrowser
 
+import android.content.Context
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
@@ -12,13 +13,13 @@ import java.net.DatagramPacket
 import java.net.SocketTimeoutException
 import java.nio.ByteBuffer
 
-class ServiceTypeResolver {
+class ServiceTypeResolver(private val context: Context) {
 
     fun serviceTypes(): Flow<String> = callbackFlow {
         val seen = HashSet<String>()
         val query = MdnsUtils.buildQuery("_services._dns-sd._udp.local", MdnsUtils.TYPE_PTR)
 
-        val socketInfo = MdnsUtils.openMulticastSocket()
+        val socketInfo = MdnsUtils.openMulticastSocket(context)
         if (socketInfo == null) {
             close()
             return@callbackFlow
@@ -53,7 +54,7 @@ class ServiceTypeResolver {
             }
         }
 
-        awaitClose { socket.close() }
+        awaitClose { socketInfo.close() }
     }.flowOn(Dispatchers.IO)
 
     companion object {

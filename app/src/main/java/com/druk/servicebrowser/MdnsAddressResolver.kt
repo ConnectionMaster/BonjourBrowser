@@ -1,5 +1,6 @@
 package com.druk.servicebrowser
 
+import android.content.Context
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -16,12 +17,13 @@ object MdnsAddressResolver {
     private const val DEFAULT_TIMEOUT_MS = 3000L
 
     suspend fun resolveAddresses(
+        context: Context,
         hostname: String,
         timeoutMs: Long = DEFAULT_TIMEOUT_MS
     ): List<InetAddress> = withContext(Dispatchers.IO) {
         val fqdn = if (hostname.endsWith(".local")) hostname else "$hostname.local"
 
-        val socketInfo = MdnsUtils.openMulticastSocket()
+        val socketInfo = MdnsUtils.openMulticastSocket(context)
         if (socketInfo == null) {
             Log.e(TAG, "Failed to open multicast socket")
             return@withContext emptyList()
@@ -61,7 +63,7 @@ object MdnsAddressResolver {
         } catch (e: IOException) {
             Log.e(TAG, "Socket error during address resolution", e)
         } finally {
-            socket.close()
+            socketInfo.close()
         }
 
         Log.d(TAG, "Resolved $fqdn to ${addresses.size} address(es): $addresses")

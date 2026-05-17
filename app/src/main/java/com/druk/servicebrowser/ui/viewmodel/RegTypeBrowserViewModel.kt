@@ -42,7 +42,7 @@ data class BonjourDomain(
 class RegTypeBrowserViewModel(application: Application) : AndroidViewModel(application) {
 
     private val nsdManager = BonjourApplication.getNsdManager(application)
-    private val resolver = ServiceTypeResolver()
+    private val resolver = ServiceTypeResolver(application)
 
     private val handler = Handler(Looper.getMainLooper())
     private val activeListeners = HashMap<String, NsdManager.DiscoveryListener>()

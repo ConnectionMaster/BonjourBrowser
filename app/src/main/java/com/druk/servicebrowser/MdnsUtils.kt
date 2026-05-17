@@ -1,14 +1,14 @@
 package com.druk.servicebrowser
 
+import android.content.Context
+import android.net.wifi.WifiManager
 import android.util.Log
 import java.io.ByteArrayOutputStream
 import java.io.DataOutputStream
 import java.io.IOException
 import java.net.DatagramPacket
-import java.net.Inet4Address
 import java.net.Inet6Address
 import java.net.InetAddress
-import java.net.InetSocketAddress
 import java.net.MulticastSocket
 import java.net.NetworkInterface
 import java.nio.ByteBuffer
@@ -16,6 +16,7 @@ import java.nio.ByteBuffer
 object MdnsUtils {
 
     private const val TAG = "MdnsUtils"
+    private const val MULTICAST_LOCK_TAG = "BonjourBrowser-mDNS"
 
     const val MDNS_IPV4_ADDRESS = "224.0.0.251"
     const val MDNS_IPV6_ADDRESS = "ff02::fb"
@@ -26,14 +27,23 @@ object MdnsUtils {
     const val TYPE_AAAA = 28
     const val CLASS_IN = 1
 
-    data class MulticastSocketInfo(
+    class MulticastSocketInfo(
         val socket: MulticastSocket,
         val ipv4Group: InetAddress,
         val ipv6Group: InetAddress?,
-        val networkInterface: NetworkInterface
-    )
+        val networkInterface: NetworkInterface,
+        private val multicastLock: WifiManager.MulticastLock?
+    ) {
+        fun close() {
+            try {
+                socket.close()
+            } finally {
+                multicastLock?.let { if (it.isHeld) it.release() }
+            }
+        }
+    }
 
-    fun openMulticastSocket(): MulticastSocketInfo? {
+    fun openMulticastSocket(context: Context): MulticastSocketInfo? {
         val wlanInterface = findMulticastInterface()
         if (wlanInterface == null) {
             Log.e(TAG, "No suitable multicast interface found")
@@ -50,32 +60,22 @@ object MdnsUtils {
             return null
         }
 
-        val socket = MulticastSocket(null).apply {
-            reuseAddress = true
-            bind(InetSocketAddress(MDNS_PORT))
+        // Bind to ephemeral port (not 5353) so responders send unicast replies
+        // back to our port per RFC 6762 §5.1, avoiding the conflict with the
+        // system mDNS daemon which already owns 5353.
+        val multicastLock = acquireMulticastLock(context)
+        val socket = MulticastSocket().apply {
             networkInterface = wlanInterface
             soTimeout = 1000
             timeToLive = 255
         }
 
-        var hasIpv4 = false
         var hasIpv6 = false
         val addrs = wlanInterface.inetAddresses
         while (addrs.hasMoreElements()) {
-            when (addrs.nextElement()) {
-                is Inet4Address -> hasIpv4 = true
-                is Inet6Address -> hasIpv6 = true
-            }
-        }
-
-        if (hasIpv4) {
-            socket.joinGroup(InetSocketAddress(ipv4Group, MDNS_PORT), wlanInterface)
-        }
-        if (hasIpv6) {
-            try {
-                socket.joinGroup(InetSocketAddress(ipv6Group, MDNS_PORT), wlanInterface)
-            } catch (e: IOException) {
-                Log.w(TAG, "Failed to join IPv6 multicast: ${e.message}")
+            if (addrs.nextElement() is Inet6Address) {
+                hasIpv6 = true
+                break
             }
         }
 
@@ -83,8 +83,27 @@ object MdnsUtils {
             socket = socket,
             ipv4Group = ipv4Group,
             ipv6Group = if (hasIpv6) ipv6Group else null,
-            networkInterface = wlanInterface
+            networkInterface = wlanInterface,
+            multicastLock = multicastLock
         )
+    }
+
+    private fun acquireMulticastLock(context: Context): WifiManager.MulticastLock? {
+        val wifiManager = context.applicationContext
+            .getSystemService(Context.WIFI_SERVICE) as? WifiManager
+        if (wifiManager == null) {
+            Log.w(TAG, "WifiManager unavailable; incoming multicast may be filtered")
+            return null
+        }
+        return try {
+            wifiManager.createMulticastLock(MULTICAST_LOCK_TAG).apply {
+                setReferenceCounted(false)
+                acquire()
+            }
+        } catch (e: SecurityException) {
+            Log.w(TAG, "Failed to acquire MulticastLock", e)
+            null
+        }
     }
 
     fun findMulticastInterface(): NetworkInterface? {
