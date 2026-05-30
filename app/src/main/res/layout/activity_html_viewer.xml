@@ -39,10 +39,22 @@
         android:layout_height="0dp"
         android:layout_weight="1">
 
-        <WebView
-            android:id="@+id/webview"
+        <ScrollView
+            android:id="@+id/scroll"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"/>
+            android:layout_height="match_parent"
+            android:fillViewport="true">
+
+            <TextView
+                android:id="@+id/text"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="16dp"
+                android:lineSpacingMultiplier="1.2"
+                android:textIsSelectable="true"
+                android:textAppearance="?attr/textAppearanceBodyMedium" />
+
+        </ScrollView>
 
         <ProgressBar
             android:id="@+id/loading"

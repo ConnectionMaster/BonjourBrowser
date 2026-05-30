@@ -42,15 +42,7 @@ class LicensesActivity : AppCompatActivity(), View.OnClickListener {
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
         mLayoutManager = LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false)
-        mAdapter = OpenSourceComponentAdapter(
-            LICENSE_SOFTWARE,
-            arrayOf(
-                ANDROID_ASSETS_FILE_PATH + ANDROID_OPEN_SOURCE_PROJECT_LICENSE,
-                ANDROID_ASSETS_FILE_PATH + ANDROID_OPEN_SOURCE_PROJECT_LICENSE,
-                ANDROID_ASSETS_FILE_PATH + ANDROID_OPEN_SOURCE_PROJECT_LICENSE,
-                ANDROID_ASSETS_FILE_PATH + ANDROID_SOFTWARE_DEVELOPMENT_KIT
-            )
-        )
+        mAdapter = OpenSourceComponentAdapter(LICENSES)
 
         val recyclerView = findViewById<RecyclerView>(R.id.recycler_view)
         recyclerView.layoutManager = mLayoutManager
@@ -74,22 +66,24 @@ class LicensesActivity : AppCompatActivity(), View.OnClickListener {
 
     override fun onClick(v: View) {
         val position = mLayoutManager.getPosition(v)
+        val license = LICENSES[position]
         val intent = Intent(v.context, HTMLViewerActivity::class.java).apply {
-            data = Uri.parse(mAdapter.getLicensePath(position))
-            putExtra(Intent.EXTRA_TITLE, mAdapter.getComponentName(position))
+            data = Uri.parse(ANDROID_ASSETS_FILE_PATH + license.asset)
+            putExtra(Intent.EXTRA_TITLE, license.name)
             addCategory(Intent.CATEGORY_DEFAULT)
         }
 
         try {
             v.context.startActivity(intent)
         } catch (e: ActivityNotFoundException) {
-            Log.e("TAG", "Failed to find viewer", e)
+            Log.e(TAG, "Failed to find viewer", e)
         }
     }
 
+    private data class OssComponent(val name: String, val asset: String)
+
     private class OpenSourceComponentAdapter(
-        private val componentNames: Array<String>,
-        private val licensePaths: Array<String>
+        private val items: List<OssComponent>
     ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
         var listener: View.OnClickListener? = null
@@ -101,27 +95,31 @@ class LicensesActivity : AppCompatActivity(), View.OnClickListener {
         }
 
         override fun onBindViewHolder(viewHolder: RecyclerView.ViewHolder, i: Int) {
-            (viewHolder.itemView as AppCompatTextView).text = componentNames[i]
+            (viewHolder.itemView as AppCompatTextView).text = items[i].name
             viewHolder.itemView.setOnClickListener(listener)
         }
 
-        override fun getItemCount(): Int = componentNames.size
-
-        fun getComponentName(position: Int): String = componentNames[position]
-
-        fun getLicensePath(position: Int): String = licensePaths[position]
+        override fun getItemCount(): Int = items.size
     }
 
     companion object {
-        private val LICENSE_SOFTWARE = arrayOf(
-            "Android Compatibility Library v4",
-            "Android Compatibility Library v7",
-            "Android Design Support Library",
-            "Android SDK"
-        )
-
+        private const val TAG = "LicensesActivity"
         private const val ANDROID_ASSETS_FILE_PATH = "file:///android_asset/"
-        private const val ANDROID_OPEN_SOURCE_PROJECT_LICENSE = "ANDROID-OPEN-SOURCE-PROJECT-LICENSE.txt"
-        private const val ANDROID_SOFTWARE_DEVELOPMENT_KIT = "ANDROID-SOFTWARE-DEVELOPMENT-KIT.txt"
+        private const val APACHE_2_0 = "APACHE-LICENSE-2.0.txt"
+
+        private val LICENSES = listOf(
+            OssComponent("AndroidX Annotation", APACHE_2_0),
+            OssComponent("AndroidX AppCompat", APACHE_2_0),
+            OssComponent("AndroidX Browser", APACHE_2_0),
+            OssComponent("AndroidX CardView", APACHE_2_0),
+            OssComponent("AndroidX Core KTX", APACHE_2_0),
+            OssComponent("AndroidX Fragment KTX", APACHE_2_0),
+            OssComponent("AndroidX Lifecycle", APACHE_2_0),
+            OssComponent("AndroidX RecyclerView", APACHE_2_0),
+            OssComponent("AndroidX SlidingPaneLayout", APACHE_2_0),
+            OssComponent("Kotlin Standard Library", APACHE_2_0),
+            OssComponent("Kotlinx Coroutines", APACHE_2_0),
+            OssComponent("Material Components for Android", APACHE_2_0),
+        )
     }
 }
